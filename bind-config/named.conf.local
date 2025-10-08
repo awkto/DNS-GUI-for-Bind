@@ -1,0 +1,12 @@
+//
+// named.conf.local
+//
+// Local zone configurations - managed by DNS GUI
+//
+
+// Example zone (will be managed through the GUI)
+// zone "example.com" {
+//     type master;
+//     file "db.example.com";
+//     allow-update { none; };
+// };

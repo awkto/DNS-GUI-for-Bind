@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  dns-gui:
+    build: .
+    container_name: dns-gui-for-bind
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "5000:5000"
+    environment:
+      - BIND_ZONES_DIR=/etc/bind/zones
+      - BIND_CONFIG_FILE=/etc/bind/named.conf.local
+      - USE_RNDC=true
+      - PORT=5000
+    volumes:
+      # Persist zone files and configurations
+      - bind-zones:/etc/bind/zones
+      - bind-config:/etc/bind
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "sh", "-c", "pgrep -x named && curl -f http://localhost:5000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  bind-zones:
+    driver: local
+  bind-config:
+    driver: local

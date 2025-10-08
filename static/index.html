@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Manager - BIND GUI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-100">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="mb-12">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
+                        DNS Manager
+                    </h1>
+                    <p class="text-gray-400 mt-2">BIND DNS Server Management Interface</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="status-indicator" class="flex items-center space-x-2 px-4 py-2 bg-gray-800 rounded-lg">
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm text-gray-300">Checking status...</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Zones Panel -->
+            <div class="lg:col-span-1">
+                <div class="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-semibold text-white">DNS Zones</h2>
+                        <button onclick="showCreateZoneModal()" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium transition duration-200 shadow-lg">
+                            + Add Zone
+                        </button>
+                    </div>
+                    
+                    <div id="zones-list" class="space-y-3">
+                        <!-- Zones will be loaded here -->
+                        <div class="text-center py-8 text-gray-500">
+                            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            Loading zones...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Records Panel -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+                    <div id="records-header" class="flex items-center justify-between mb-6">
+                        <h2 class="text-2xl font-semibold text-white">DNS Records</h2>
+                        <button id="add-record-btn" onclick="showCreateRecordModal()" disabled class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-medium transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                            + Add Record
+                        </button>
+                    </div>
+                    
+                    <div id="records-content">
+                        <div class="text-center py-16 text-gray-500">
+                            <svg class="w-20 h-20 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p class="text-lg">Select a zone to view and manage records</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Zone Modal -->
+    <div id="create-zone-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 border border-gray-700 shadow-2xl">
+            <h3 class="text-2xl font-bold mb-6 text-white">Create New Zone</h3>
+            <form id="create-zone-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Zone Name</label>
+                    <input type="text" name="zone_name" placeholder="example.com" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Admin Email</label>
+                    <input type="email" name="admin_email" placeholder="admin@example.com"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Default TTL (seconds)</label>
+                    <input type="number" name="ttl" value="86400"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex space-x-3 mt-6">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium transition duration-200">
+                        Create Zone
+                    </button>
+                    <button type="button" onclick="hideCreateZoneModal()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition duration-200">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create/Edit Record Modal -->
+    <div id="record-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 border border-gray-700 shadow-2xl">
+            <h3 id="record-modal-title" class="text-2xl font-bold mb-6 text-white">Add DNS Record</h3>
+            <form id="record-form" class="space-y-4">
+                <input type="hidden" name="record_id" id="record-id">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                    <input type="text" name="name" id="record-name" placeholder="www or @ for root" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Type</label>
+                    <select name="type" id="record-type" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="A">A - IPv4 Address</option>
+                        <option value="AAAA">AAAA - IPv6 Address</option>
+                        <option value="CNAME">CNAME - Canonical Name</option>
+                        <option value="MX">MX - Mail Exchange</option>
+                        <option value="TXT">TXT - Text Record</option>
+                        <option value="NS">NS - Name Server</option>
+                        <option value="PTR">PTR - Pointer</option>
+                        <option value="SRV">SRV - Service</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Value</label>
+                    <input type="text" name="value" id="record-value" placeholder="192.168.1.1 or target.example.com" required
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">TTL (seconds)</label>
+                    <input type="number" name="ttl" id="record-ttl" value="3600"
+                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+                <div class="flex space-x-3 mt-6">
+                    <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-medium transition duration-200">
+                        Save Record
+                    </button>
+                    <button type="button" onclick="hideRecordModal()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition duration-200">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-6 right-6 px-6 py-4 rounded-lg shadow-2xl z-50 max-w-md">
+        <div class="flex items-center space-x-3">
+            <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
+            <span id="toast-message" class="font-medium"></span>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
