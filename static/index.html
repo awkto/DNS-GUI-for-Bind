@@ -15,26 +15,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style type="text/tailwindcss">
         @layer base {
-            /* Light theme variables (kept for optional toggle) */
+            /* Dark theme (charcoal/solarized-ish) */
             :root {
-                --bg-primary: 255 255 255;      /* white */
-                --bg-secondary: 247 248 250;    /* zinc-50 */
-                --bg-accent: 233 237 243;       /* slate-100 */
-                --text-primary: 28 30 33;       /* zinc-900 */
-                --text-secondary: 63 63 70;     /* zinc-700 */
-                --text-muted: 113 113 122;      /* zinc-500 */
-                --border: 221 221 221;          /* zinc-200 */
-                --brand: 59 130 246;            /* blue-500 */
-            }
-            /* Dark theme overrides (default) */
-            .dark {
-                --bg-primary: 17 18 20;         /* zinc-900 */
-                --bg-secondary: 24 25 28;       /* zinc-800 */
-                --bg-accent: 38 42 48;          /* slate-700 */
-                --text-primary: 244 244 245;    /* zinc-100 */
-                --text-secondary: 212 212 216;  /* zinc-300 */
-                --text-muted: 161 161 170;      /* zinc-400 */
-                --border: 63 63 70;             /* zinc-700 */
+                --bg-primary: 28 32 38;         /* charcoal */
+                --bg-secondary: 34 39 46;       /* deeper slate */
+                --bg-accent: 45 51 59;          /* slate-700 */
+                --text-primary: 232 234 237;    /* near-white */
+                --text-secondary: 200 204 211;  /* light gray */
+                --text-muted: 148 163 184;      /* slate-400 */
+                --border: 67 72 80;             /* slate-600/700 */
                 --brand: 56 189 248;            /* sky-400 */
             }
         }
@@ -42,6 +31,11 @@
         body {
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
+            /* Gentle background tint with soft blobs */
+            background-image:
+                radial-gradient( at 25% 10%, rgba(var(--bg-secondary), 0.65) 0, transparent 45%),
+                radial-gradient( at 85% 0%, rgba(var(--bg-accent), 0.5) 0, transparent 50%);
+            background-attachment: fixed;
         }
         @keyframes slideIn {
             from { transform: translateX(100%); }
@@ -79,12 +73,6 @@
                 <button onclick="showConfigModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] hover:bg-[rgb(var(--bg-accent))] text-[rgb(var(--text-primary))] px-3 py-2 text-sm transition-colors" title="Configuration">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
-                    </svg>
-                </button>
-                <!-- Theme toggle -->
-                <button id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] hover:bg-[rgb(var(--bg-accent))] text-[rgb(var(--text-primary))] px-3 py-2 text-sm transition-colors" title="Toggle theme">
-                    <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
                     </svg>
                 </button>
             </div>
@@ -464,26 +452,5 @@
     </div>
 
     <script src="app.js"></script>
-    <script>
-        // Simple theme toggle: persists preference and swaps icon
-        const root = document.documentElement;
-        const toggle = document.getElementById('theme-toggle');
-        const icon = document.getElementById('theme-icon');
-        const stored = localStorage.getItem('theme');
-        if (stored) {
-            root.classList.toggle('dark', stored === 'dark');
-        }
-        function setIcon() {
-            icon.innerHTML = root.classList.contains('dark')
-                ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
-                : '<circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78 5.64 18.36m12.72-12.72 1.42-1.42"/>';
-        }
-        setIcon();
-        toggle.addEventListener('click', () => {
-            root.classList.toggle('dark');
-            localStorage.setItem('theme', root.classList.contains('dark') ? 'dark' : 'light');
-            setIcon();
-        });
-    </script>
 </body>
 </html>

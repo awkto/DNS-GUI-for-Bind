@@ -105,11 +105,11 @@ async function loadZones() {
             
             // Update zones grid
             zonesList.innerHTML = data.zones.map(zone => `
-                <div onclick="selectZoneFromCard('${zone.name}')" class="group cursor-pointer rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/50 p-4 transition-all hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md">
+                <div onclick="selectZoneFromCard('${zone.name}')" class="group cursor-pointer rounded-2xl border border-zinc-200 dark:border-slate-600 bg-white dark:bg-slate-700/30 p-4 transition-all hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md">
                     <div class="flex items-start justify-between">
                         <div class="flex-1">
                             <h3 class="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">${zone.name}</h3>
-                            <p class="text-xs text-zinc-500 dark:text-zinc-400">${zone.record_count} records</p>
+                            <p class="text-xs text-zinc-500 dark:text-slate-300">${zone.record_count} records</p>
                         </div>
                         <button onclick="deleteZone(event, '${zone.name}')" 
                                 class="opacity-0 group-hover:opacity-100 p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all">
@@ -184,38 +184,38 @@ function renderRecordsTable(records) {
     
     if (records.length > 0) {
         recordsContent.innerHTML = `
-            <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800 text-sm">
-                <thead class="bg-zinc-50/50 dark:bg-zinc-900/50">
+            <table class="min-w-full divide-y divide-zinc-200 dark:divide-slate-700 text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-800/40">
                     <tr>
-                        <th class="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400">Name</th>
-                        <th class="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400">Type</th>
-                        <th class="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400">Value</th>
-                        <th class="px-4 py-3 text-left font-medium text-zinc-500 dark:text-zinc-400">TTL</th>
-                        <th class="px-4 py-3 text-right font-medium text-zinc-500 dark:text-zinc-400">Actions</th>
+                        <th class="px-4 py-3 text-left font-medium text-zinc-600 dark:text-slate-300">Name</th>
+                        <th class="px-4 py-3 text-left font-medium text-zinc-600 dark:text-slate-300">Type</th>
+                        <th class="px-4 py-3 text-left font-medium text-zinc-600 dark:text-slate-300">Value</th>
+                        <th class="px-4 py-3 text-left font-medium text-zinc-600 dark:text-slate-300">TTL</th>
+                        <th class="px-4 py-3 text-right font-medium text-zinc-600 dark:text-slate-300">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                <tbody class="divide-y divide-zinc-100 dark:divide-slate-700/60">
                     ${records.map(record => `
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors">
                             <td class="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">${record.name}</td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                                <span class="inline-flex items-center rounded-full border border-zinc-200 dark:border-slate-600 bg-zinc-50 dark:bg-slate-700 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:text-zinc-200">
                                     ${record.type}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-zinc-700 dark:text-zinc-300 font-mono text-sm">${escapeHtml(record.value)}</td>
-                            <td class="px-4 py-3 text-zinc-600 dark:text-zinc-400">${record.ttl}s</td>
+                            <td class="px-4 py-3 text-zinc-600 dark:text-slate-300">${record.ttl}s</td>
                             <td class="px-4 py-3">
                                 <div class="flex justify-end gap-2">
                                     <button onclick="editRecord('${record.id}', '${record.name}', '${record.type}', '${escapeHtml(record.value)}', ${record.ttl})"
-                                            class="inline-flex items-center gap-1 rounded-xl border border-zinc-300 dark:border-zinc-700 px-2.5 py-1.5 text-xs transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                                            class="inline-flex items-center gap-1 rounded-xl border border-zinc-300 dark:border-slate-600 px-2.5 py-1.5 text-xs transition-colors hover:bg-zinc-50 dark:hover:bg-slate-700/50"
                                             title="Edit">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                         </svg>
                                     </button>
-                                    <button onclick="deleteRecord('${record.id}')"
-                                            class="inline-flex items-center gap-1 rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2.5 py-1.5 text-xs transition-colors hover:bg-red-100 dark:hover:bg-red-900/40"
+                    <button onclick="deleteRecord('${record.id}')"
+                        class="inline-flex items-center gap-1 rounded-xl border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2.5 py-1.5 text-xs transition-colors hover:bg-red-100 dark:hover:bg-red-800/40"
                                             title="Delete">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
@@ -591,7 +591,7 @@ function renderForwarders(forwarders) {
         item.className = 'flex items-center gap-2';
         item.innerHTML = `
             <input type="text" value="${escapeHtml(forwarder)}" 
-                class="h-9 flex-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
+                class="h-9 flex-1 rounded-xl border border-zinc-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
                 onchange="updateForwarder(${index}, this.value)">
             <button onclick="removeForwarder(${index})" class="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-zinc-300 dark:border-zinc-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -635,11 +635,11 @@ function renderConditionalForwarders(conditionalForwarders) {
         item.className = 'grid grid-cols-2 gap-2';
         item.innerHTML = `
             <input type="text" value="${escapeHtml(domain)}" placeholder="Domain"
-                class="h-9 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
+                class="h-9 rounded-xl border border-zinc-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
                 onchange="updateConditionalForwarderDomain('${escapeHtml(domain)}', this.value)">
             <div class="flex items-center gap-2">
                 <input type="text" value="${escapeHtml(servers.join(', '))}" placeholder="Servers (comma separated)"
-                    class="h-9 flex-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
+                    class="h-9 flex-1 rounded-xl border border-zinc-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
                     onchange="updateConditionalForwarderServers('${escapeHtml(domain)}', this.value)">
                 <button onclick="removeConditionalForwarder('${escapeHtml(domain)}')" class="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-zinc-300 dark:border-zinc-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -685,7 +685,7 @@ function renderBlockedZones(blockedZones) {
         item.className = 'flex items-center gap-2';
         item.innerHTML = `
             <input type="text" value="${escapeHtml(zone)}" placeholder="Domain to block"
-                class="h-9 flex-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
+                class="h-9 flex-1 rounded-xl border border-zinc-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 dark:text-zinc-100"
                 onchange="updateBlockedZone(${index}, this.value)">
             <button onclick="removeBlockedZone(${index})" class="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-zinc-300 dark:border-zinc-700 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
