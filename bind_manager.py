@@ -92,6 +92,10 @@ class BindManager:
                 zone_name = match.group(1)
                 zone_file = match.group(2)
                 
+                # Skip special internal zones (RPZ)
+                if zone_name == 'rpz.blocked':
+                    continue
+                
                 # Get record count
                 record_count = 0
                 full_path = zone_file if zone_file.startswith('/') else os.path.join(self.zones_dir, zone_file)
@@ -403,3 +407,291 @@ zone "{zone_name}" {{
                 f.write(content)
             
             logger.info(f"Incremented serial: {old_serial} -> {new_serial}")
+
+    def get_config(self) -> Dict:
+        """
+        Read BIND configuration from named.conf
+        Returns a dictionary with configuration settings
+        """
+        main_config_file = os.getenv('BIND_MAIN_CONFIG', '/etc/bind/named.conf')
+        
+        config = {
+            'recursion': False,
+            'forwarders': [],
+            'conditional_forwarders': {},
+            'caching': True,
+            'cache_size': 100,
+            'max_cache_ttl': 86400,
+            'blocked_zones': []
+        }
+        
+        try:
+            if os.path.exists(main_config_file):
+                with open(main_config_file, 'r') as f:
+                    content = f.read()
+                
+                # Parse recursion
+                if re.search(r'recursion\s+yes', content):
+                    config['recursion'] = True
+                
+                # Parse forwarders
+                forwarders_match = re.search(r'forwarders\s*{([^}]+)}', content, re.DOTALL)
+                if forwarders_match:
+                    forwarders_text = forwarders_match.group(1)
+                    config['forwarders'] = [
+                        ip.strip().rstrip(';') 
+                        for ip in re.findall(r'(\d+\.\d+\.\d+\.\d+);?', forwarders_text)
+                    ]
+                
+                # Parse max cache size
+                cache_size_match = re.search(r'max-cache-size\s+(\d+)M?', content)
+                if cache_size_match:
+                    config['cache_size'] = int(cache_size_match.group(1))
+                
+                # Parse max cache ttl
+                cache_ttl_match = re.search(r'max-cache-ttl\s+(\d+)', content)
+                if cache_ttl_match:
+                    config['max_cache_ttl'] = int(cache_ttl_match.group(1))
+            
+            # Parse blocked zones from RPZ file
+            rpz_file = os.path.join(self.zones_dir, 'db.rpz.blocked')
+            if os.path.exists(rpz_file):
+                with open(rpz_file, 'r') as f:
+                    rpz_content = f.read()
+                
+                # Extract blocked domains (look for CNAME . entries, skip wildcards)
+                blocked_domains = []
+                for line in rpz_content.split('\n'):
+                    if 'CNAME' in line and '.' in line and not line.strip().startswith('*'):
+                        # Extract domain name before CNAME
+                        parts = line.split()
+                        if len(parts) >= 2 and parts[0] not in ['@', ';']:
+                            domain = parts[0].strip()
+                            if domain and domain not in blocked_domains:
+                                blocked_domains.append(domain)
+                config['blocked_zones'] = blocked_domains
+            
+            # Parse conditional forwarders (zone forwarders) from named.conf.local
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    local_content = f.read()
+                
+                # Find all zone blocks with type forward
+                zone_pattern = r'zone\s+"([^"]+)"\s*{[^}]*type\s+forward[^}]*forwarders\s*{([^}]+)}'
+                for match in re.finditer(zone_pattern, local_content, re.DOTALL):
+                    zone_name = match.group(1)
+                    forwarders_text = match.group(2)
+                    # Extract IPs
+                    ips = [ip.strip().rstrip(';') for ip in re.findall(r'(\d+\.\d+\.\d+\.\d+);?', forwarders_text)]
+                    if ips and zone_name != 'rpz.blocked':
+                        config['conditional_forwarders'][zone_name] = ips
+        
+        except Exception as e:
+            logger.error(f"Error reading config: {e}")
+        
+        return config
+    
+    def update_config(self, new_config: Dict):
+        """
+        Update BIND configuration file with new settings
+        
+        Args:
+            new_config: Dictionary containing configuration settings
+        """
+        main_config_file = os.getenv('BIND_MAIN_CONFIG', '/etc/bind/named.conf')
+        
+        try:
+            # Read current config
+            if os.path.exists(main_config_file):
+                with open(main_config_file, 'r') as f:
+                    content = f.read()
+            else:
+                # Create basic config if doesn't exist
+                content = """
+options {
+    directory "/var/cache/bind";
+    listen-on port 53 { any; };
+    listen-on-v6 { any; };
+    allow-query { any; };
+    dnssec-validation no;
+};
+
+include "/etc/bind/named.conf.local";
+"""
+            
+            # Update recursion
+            recursion_value = 'yes' if new_config.get('recursion', False) else 'no'
+            if re.search(r'recursion\s+(yes|no)', content):
+                content = re.sub(r'recursion\s+(yes|no)', f'recursion {recursion_value}', content)
+            else:
+                # Add after options {
+                content = re.sub(r'(options\s*{)', f'\\1\n    recursion {recursion_value};', content)
+            
+            # Update forwarders
+            forwarders = new_config.get('forwarders', [])
+            forwarders_block = ''
+            if forwarders:
+                forwarders_ips = ';\n        '.join(forwarders) + ';'
+                forwarders_block = f'\n    forwarders {{\n        {forwarders_ips}\n    }};'
+            
+            # Remove old forwarders block
+            content = re.sub(r'\n?\s*forwarders\s*{[^}]+};\s*', '', content)
+            
+            # Add new forwarders block if present
+            if forwarders_block:
+                content = re.sub(r'(recursion\s+(yes|no);)', f'\\1{forwarders_block}', content)
+            
+            # Update cache settings
+            if new_config.get('caching', True):
+                cache_size = new_config.get('cache_size', 100)
+                cache_ttl = new_config.get('max_cache_ttl', 86400)
+                
+                # Update or add max-cache-size
+                if re.search(r'max-cache-size\s+\d+M?', content):
+                    content = re.sub(r'max-cache-size\s+\d+M?', f'max-cache-size {cache_size}M', content)
+                else:
+                    content = re.sub(r'(options\s*{)', f'\\1\n    max-cache-size {cache_size}M;', content)
+                
+                # Update or add max-cache-ttl
+                if re.search(r'max-cache-ttl\s+\d+', content):
+                    content = re.sub(r'max-cache-ttl\s+\d+', f'max-cache-ttl {cache_ttl}', content)
+                else:
+                    content = re.sub(r'(options\s*{)', f'\\1\n    max-cache-ttl {cache_ttl};', content)
+            
+            # Handle blocked zones using Response Policy Zones (RPZ)
+            blocked_zones = new_config.get('blocked_zones', [])
+            
+            # Update RPZ configuration in options block
+            if blocked_zones:
+                rpz_directive = 'response-policy { zone "rpz.blocked"; };'
+                if re.search(r'response-policy', content):
+                    # Update existing RPZ
+                    content = re.sub(r'response-policy\s*{[^}]+};', rpz_directive, content)
+                else:
+                    # Add RPZ directive after options {
+                    content = re.sub(r'(options\s*{)', f'\\1\n    {rpz_directive}', content)
+                
+                # Create RPZ zone file
+                rpz_file = os.path.join(self.zones_dir, 'db.rpz.blocked')
+                rpz_content = f'''$TTL 60
+@       IN      SOA     localhost. root.localhost. (
+                        {self._get_serial()}     ; Serial
+                        3600                     ; Refresh
+                        1800                     ; Retry
+                        604800                   ; Expire
+                        60 )                     ; Minimum TTL
+        IN      NS      localhost.
+
+; Blocked domains - return NXDOMAIN
+'''
+                for zone in blocked_zones:
+                    # Add RPZ rules to return NXDOMAIN for blocked domains
+                    rpz_content += f'{zone}    CNAME   .\n'
+                    rpz_content += f'*.{zone}  CNAME   .\n'
+                
+                with open(rpz_file, 'w') as f:
+                    f.write(rpz_content)
+                
+                # Add RPZ zone to named.conf.local if not exists
+                rpz_zone_config = '''
+// Response Policy Zone for blocking
+zone "rpz.blocked" {
+    type master;
+    file "/etc/bind/zones/db.rpz.blocked";
+    allow-query { none; };
+};
+'''
+                if os.path.exists(self.config_file):
+                    with open(self.config_file, 'r') as f:
+                        local_content = f.read()
+                    
+                    if 'rpz.blocked' not in local_content:
+                        with open(self.config_file, 'a') as f:
+                            f.write(rpz_zone_config)
+            else:
+                # Remove RPZ if no blocked zones
+                content = re.sub(r'\s*response-policy\s*{[^}]+};\s*', '', content)
+                
+                # Remove RPZ zone from named.conf.local
+                if os.path.exists(self.config_file):
+                    with open(self.config_file, 'r') as f:
+                        local_content = f.read()
+                    
+                    local_content = re.sub(
+                        r'// Response Policy Zone for blocking.*?zone "rpz\.blocked".*?};',
+                        '',
+                        local_content,
+                        flags=re.DOTALL
+                    )
+                    
+                    with open(self.config_file, 'w') as f:
+                        f.write(local_content)
+            
+            # Handle conditional forwarders (zone forwarders)
+            conditional_forwarders = new_config.get('conditional_forwarders', {})
+            
+            # Read current named.conf.local
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    local_content = f.read()
+            else:
+                local_content = ''
+            
+            # Remove old zone forwarder sections
+            # Remove the Zone Forwarders comment and all subsequent zone forward blocks
+            local_content = re.sub(
+                r'// Zone Forwarders.*',
+                '',
+                local_content,
+                flags=re.DOTALL
+            )
+            
+            # Also remove any standalone zone forward blocks that might exist
+            while True:
+                old_content = local_content
+                local_content = re.sub(
+                    r'zone\s+"[^"]+"\s*\{\s*type\s+forward;.*?\};',
+                    '',
+                    local_content,
+                    flags=re.DOTALL
+                )
+                if old_content == local_content:
+                    break
+            
+            # Add new zone forwarders
+            if conditional_forwarders:
+                zone_forwarders_config = '\n// Zone Forwarders\n'
+                for zone_name, servers in conditional_forwarders.items():
+                    if servers:  # Only add if there are servers
+                        servers_list = ';\n        '.join(servers) + ';'
+                        zone_forwarders_config += f'''
+zone "{zone_name}" {{
+    type forward;
+    forward only;
+    forwarders {{
+        {servers_list}
+    }};
+}};
+'''
+                
+                # Append to named.conf.local
+                local_content += zone_forwarders_config
+            
+            # Write updated named.conf.local
+            with open(self.config_file, 'w') as f:
+                f.write(local_content)
+            
+            # Write updated main config
+            with open(main_config_file, 'w') as f:
+                f.write(content)
+            
+            logger.info("Configuration updated successfully")
+            
+            # Reload BIND to apply changes
+            self._reload_bind()
+            
+        except Exception as e:
+            logger.error(f"Error updating configuration: {e}")
+            raise
+
+

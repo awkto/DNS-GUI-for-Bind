@@ -29,6 +29,7 @@ COPY static/ ./static/
 COPY bind-config/named.conf /etc/bind/named.conf
 COPY bind-config/named.conf.local /etc/bind/named.conf.local
 COPY bind-config/named.conf.default-zones /etc/bind/named.conf.default-zones
+COPY bind-config/null.zone /etc/bind/null.zone
 
 # Create zones directory
 RUN mkdir -p /etc/bind/zones && \

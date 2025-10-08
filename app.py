@@ -164,6 +164,32 @@ def delete_record(zone_name, record_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/config', methods=['GET'])
+def get_config():
+    """Get BIND configuration"""
+    try:
+        config = bind_manager.get_config()
+        return jsonify(config)
+    except Exception as e:
+        logger.error(f"Error getting configuration: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/config', methods=['POST'])
+def update_config():
+    """Update BIND configuration"""
+    try:
+        data = request.get_json()
+        bind_manager.update_config(data)
+        return jsonify({
+            'success': True,
+            'message': 'Configuration updated successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error updating configuration: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""

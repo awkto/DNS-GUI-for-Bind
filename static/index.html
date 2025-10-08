@@ -6,73 +6,325 @@
     <title>DNS Manager - BIND GUI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
+    <style type="text/tailwindcss">
+        @layer base {
+            :root {
+                --bg-primary: 255 255 255;
+                --bg-secondary: 247 248 250;
+                --bg-accent: 233 237 243;
+                --text-primary: 28 30 33;
+                --text-secondary: 85 85 85;
+                --text-muted: 119 119 119;
+                --border: 221 221 221;
+                --brand: 0 120 255;
+            }
+        }
+        
         body {
             font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.2s ease-out;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-100">
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
-        <!-- Header -->
-        <header class="mb-12">
-            <div class="flex items-center justify-between">
+<body class="min-h-screen bg-[rgb(var(--bg-primary))] text-[rgb(var(--text-primary))] antialiased">
+    
+    <!-- Header -->
+    <header class="sticky top-0 z-30 border-b border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))]/80 backdrop-blur-md">
+        <div class="mx-auto max-w-7xl flex items-center justify-between px-4 py-3">
+            <div class="flex items-center gap-3">
+                <div class="h-9 w-9 grid place-items-center rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-400 text-white shadow">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+                    </svg>
+                </div>
                 <div>
-                    <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
-                        DNS Manager
-                    </h1>
-                    <p class="text-gray-400 mt-2">BIND DNS Server Management Interface</p>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div id="status-indicator" class="flex items-center space-x-2 px-4 py-2 bg-gray-800 rounded-lg">
-                        <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
-                        <span class="text-sm text-gray-300">Checking status...</span>
-                    </div>
+                    <h1 class="text-lg font-semibold tracking-tight text-[rgb(var(--text-primary))]">DNS Manager</h1>
+                    <p class="text-xs text-[rgb(var(--text-muted))]">BIND zones and records</p>
                 </div>
             </div>
-        </header>
+            <div class="flex items-center gap-2">
+                <button onclick="showConfigModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] hover:bg-[rgb(var(--bg-accent))] text-[rgb(var(--text-primary))] px-3 py-2 text-sm transition-colors" title="Configuration">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
 
-        <!-- Main Content -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Zones Panel -->
-            <div class="lg:col-span-1">
-                <div class="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-semibold text-white">DNS Zones</h2>
-                        <button onclick="showCreateZoneModal()" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium transition duration-200 shadow-lg">
-                            + Add Zone
+    <!-- Main Content -->
+    <div class="mx-auto max-w-7xl px-4 py-6">
+        <!-- Zones Section - Collapsible -->
+        <div class="mb-6 rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] shadow-sm">
+            <div class="p-4">
+                <div class="flex items-center justify-between cursor-pointer" onclick="toggleZonesSection()">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-60">
+                            <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>
+                        </svg>
+                        <h2 class="text-sm font-semibold">DNS Zones</h2>
+                        <span id="zones-status" class="text-xs text-[rgb(var(--text-muted))]"></span>
+                        <span id="zones-count" class="ml-2 inline-flex items-center rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] px-2.5 py-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">0</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="showCreateZoneModal(); event.stopPropagation();" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
+                            </svg>
+                            Add Zone
+                        </button>
+                        <button id="zones-toggle-icon" class="p-2 hover:bg-[rgb(var(--bg-accent))] rounded-xl transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transform transition-transform">
+                                <path d="m18 15-6-6-6 6"/>
+                            </svg>
                         </button>
                     </div>
-                    
-                    <div id="zones-list" class="space-y-3">
+                </div>
+                <div id="zones-content" class="mt-3 hidden">
+                    <div id="zones-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         <!-- Zones will be loaded here -->
-                        <div class="text-center py-8 text-gray-500">
-                            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                            </svg>
-                            Loading zones...
-                        </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Records Panel -->
-            <div class="lg:col-span-2">
-                <div class="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
-                    <div id="records-header" class="flex items-center justify-between mb-6">
-                        <h2 class="text-2xl font-semibold text-white">DNS Records</h2>
-                        <button id="add-record-btn" onclick="showCreateRecordModal()" disabled class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-medium transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                            + Add Record
+        <!-- Flash Messages -->
+        <div id="flash-container" class="mb-4"></div>
+
+        <!-- Toolbar -->
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-12 mb-6">
+            <div class="md:col-span-6">
+                <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Search</label>
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 opacity-60" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Filter by name, content, or type…" class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 pl-9 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500">
+                </div>
+            </div>
+            <div class="md:col-span-3">
+                <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Zone</label>
+                <select id="zone-select" class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm">
+                    <option value="">Select a zone...</option>
+                </select>
+            </div>
+            <div class="md:col-span-3">
+                <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Record Type</label>
+                <div class="relative">
+                    <button type="button" id="type-filter-btn" onclick="toggleTypeFilter()" class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm flex items-center justify-between">
+                        <span id="type-filter-label">All Types</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                    </button>
+                    <div id="type-filter-dropdown" class="hidden absolute z-20 mt-1 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] shadow-lg p-2 max-h-64 overflow-y-auto">
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="A" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">A</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="AAAA" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">AAAA</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="CNAME" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">CNAME</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="MX" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">MX</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="TXT" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">TXT</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="NS" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">NS</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="SRV" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">SRV</span>
+                        </label>
+                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[rgb(var(--bg-secondary))] cursor-pointer">
+                            <input type="checkbox" value="PTR" class="type-filter-checkbox rounded border-[rgb(var(--border))] text-indigo-600 focus:ring-indigo-500">
+                            <span class="text-sm">PTR</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Records Card -->
+        <div class="rounded-3xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] p-4 shadow-sm">
+            <div class="mb-3 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="opacity-60">
+                        <path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>
+                    </svg>
+                    <h2 class="text-sm font-semibold">DNS Records</h2>
+                    <span id="records-count" class="ml-2 inline-flex items-center rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] px-2.5 py-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">0 shown</span>
+                </div>
+                <button id="add-record-btn" onclick="showCreateRecordModal()" disabled class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))] disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
+                    </svg>
+                    Add Record
+                </button>
+            </div>
+
+            <div id="records-content" class="overflow-hidden rounded-2xl border border-[rgb(var(--border))]">
+                <div class="px-4 py-16 text-center text-[rgb(var(--text-muted))]">
+                    <svg class="w-20 h-20 mx-auto mb-4 opacity-50" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <p class="text-lg">Select a zone to view and manage records</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="mx-auto mt-6 text-center text-xs text-[rgb(var(--text-muted))]">Tip: Search filters instantly. Choose a record type from the dropdown to narrow further.</p>
+    </div>
+
+
+    <!-- Configuration Modal -->
+    <div id="config-modal" class="hidden fixed inset-0 bg-black/30 z-50 fade-in">
+        <div class="absolute inset-0" onclick="hideConfigModal()"></div>
+        <div class="absolute right-0 h-full w-full max-w-2xl bg-[rgb(var(--bg-primary))] shadow-xl slide-in flex flex-col">
+            <div class="flex items-center justify-between border-b border-[rgb(var(--border))] p-4">
+                <div>
+                    <h3 class="text-base font-semibold">BIND Configuration</h3>
+                    <p class="text-xs text-[rgb(var(--text-muted))]">Advanced DNS server settings</p>
+                </div>
+                <button onclick="hideConfigModal()" class="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">Close</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4 space-y-6">
+                <!-- Recursion -->
+                <div class="rounded-2xl border border-[rgb(var(--border))] p-4">
+                    <div class="flex items-start justify-between mb-3">
+                        <div>
+                            <h4 class="font-semibold text-sm mb-1">Recursion</h4>
+                            <p class="text-xs text-[rgb(var(--text-muted))]">Allow recursive queries for DNS resolution</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="recursion-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-zinc-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[rgb(var(--bg-primary))] after:border-[rgb(var(--border))] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+                    <p class="text-xs text-zinc-600">⚠️ Enabling recursion allows this server to resolve queries for any domain. Only enable if you trust all clients.</p>
+                </div>
+
+                <!-- Forwarders -->
+                <div class="rounded-2xl border border-[rgb(var(--border))] p-4">
+                    <h4 class="font-semibold text-sm mb-3">Global Forwarders</h4>
+                    <p class="text-xs text-[rgb(var(--text-muted))] mb-3">Forward queries to upstream DNS servers</p>
+                    <div class="space-y-2">
+                        <div id="forwarders-list" class="space-y-2">
+                            <!-- Forwarders will be listed here -->
+                        </div>
+                        <button onclick="addForwarder()" class="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--border))] px-3 py-1.5 text-xs transition-colors hover:bg-[rgb(var(--bg-secondary))]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
+                            </svg>
+                            Add Forwarder
                         </button>
                     </div>
-                    
-                    <div id="records-content">
-                        <div class="text-center py-16 text-gray-500">
-                            <svg class="w-20 h-20 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <p class="text-lg">Select a zone to view and manage records</p>
+                </div>
+
+                <!-- Conditional Forwarders -->
+                <div class="rounded-2xl border border-[rgb(var(--border))] p-4">
+                    <h4 class="font-semibold text-sm mb-3">Zone Forwarders</h4>
+                    <p class="text-xs text-[rgb(var(--text-muted))] mb-3">Forward specific domains to designated servers</p>
+                    <div class="space-y-2">
+                        <div id="conditional-forwarders-list" class="space-y-2">
+                            <!-- Conditional forwarders will be listed here -->
                         </div>
+                        <button onclick="addConditionalForwarder()" class="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--border))] px-3 py-1.5 text-xs transition-colors hover:bg-[rgb(var(--bg-secondary))]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
+                            </svg>
+                            Add Conditional Forwarder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Caching -->
+                <div class="rounded-2xl border border-[rgb(var(--border))] p-4">
+                    <div class="flex items-start justify-between mb-3">
+                        <div>
+                            <h4 class="font-semibold text-sm mb-1">DNS Caching</h4>
+                            <p class="text-xs text-[rgb(var(--text-muted))]">Cache DNS responses to improve performance</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="caching-toggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-zinc-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[rgb(var(--bg-primary))] after:border-[rgb(var(--border))] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Max Cache Size (MB)</label>
+                            <input type="number" id="cache-size" value="100" min="10" max="10000"
+                                class="h-9 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Max Cache TTL (seconds)</label>
+                            <input type="number" id="cache-ttl" value="86400" min="60" max="604800"
+                                class="h-9 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Blocked Zones -->
+                <div class="rounded-2xl border border-[rgb(var(--border))] p-4">
+                    <h4 class="font-semibold text-sm mb-3">Blocked Zones</h4>
+                    <p class="text-xs text-[rgb(var(--text-muted))] mb-3">Block specific domains (ad blocking, malware protection)</p>
+                    <div class="space-y-2">
+                        <div id="blocked-zones-list" class="space-y-2">
+                            <!-- Blocked zones will be listed here -->
+                        </div>
+                        <button onclick="addBlockedZone()" class="inline-flex items-center gap-2 rounded-xl border border-[rgb(var(--border))] px-3 py-1.5 text-xs transition-colors hover:bg-[rgb(var(--bg-secondary))]">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
+                            </svg>
+                            Add Blocked Zone
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-[rgb(var(--border))] p-4">
+                <div class="flex items-center justify-end">
+                    <div class="flex items-center gap-3">
+                        <span id="save-success-message" class="hidden text-sm text-emerald-600 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            Saved successfully!
+                        </span>
+                        <button onclick="hideConfigModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-secondary))]">
+                            Cancel
+                        </button>
+                        <button id="save-config-btn" onclick="saveConfiguration()" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))] disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg id="save-config-spinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span id="save-config-text">Save</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -80,89 +332,109 @@
     </div>
 
     <!-- Create Zone Modal -->
-    <div id="create-zone-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 border border-gray-700 shadow-2xl">
-            <h3 class="text-2xl font-bold mb-6 text-white">Create New Zone</h3>
-            <form id="create-zone-form" class="space-y-4">
+    <div id="create-zone-modal" class="hidden fixed inset-0 bg-black/30 z-50 fade-in">
+        <div class="absolute inset-0" onclick="hideCreateZoneModal()"></div>
+        <div class="absolute right-0 h-full w-full max-w-xl bg-[rgb(var(--bg-primary))] shadow-xl slide-in flex flex-col">
+            <div class="flex items-center justify-between border-b border-[rgb(var(--border))] p-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Zone Name</label>
-                    <input type="text" name="zone_name" placeholder="example.com" required
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <h3 class="text-base font-semibold">Add DNS Zone</h3>
+                    <p class="text-xs text-[rgb(var(--text-muted))]">Create a new authoritative DNS zone</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Admin Email</label>
-                    <input type="email" name="admin_email" placeholder="admin@example.com"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <button onclick="hideCreateZoneModal()" class="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">Close</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+                <form id="create-zone-form" class="space-y-4">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Zone Name</label>
+                        <input type="text" name="zone_name" placeholder="example.com" required
+                            class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 placeholder-zinc-400">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Admin Email</label>
+                        <input type="email" name="admin_email" placeholder="admin@example.com"
+                            class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 placeholder-zinc-400">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Default TTL (seconds)</label>
+                        <input type="number" name="ttl" value="3600"
+                            class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </form>
+            </div>
+            <div class="border-t border-[rgb(var(--border))] p-4">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs text-[rgb(var(--text-muted))]">Zone will be created with default SOA and NS records</div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="hideCreateZoneModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-secondary))]">
+                            Cancel
+                        </button>
+                        <button type="submit" form="create-zone-form" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">
+                            Create Zone
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Default TTL (seconds)</label>
-                    <input type="number" name="ttl" value="86400"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div class="flex space-x-3 mt-6">
-                    <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium transition duration-200">
-                        Create Zone
-                    </button>
-                    <button type="button" onclick="hideCreateZoneModal()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition duration-200">
-                        Cancel
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
     <!-- Create/Edit Record Modal -->
-    <div id="record-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 border border-gray-700 shadow-2xl">
-            <h3 id="record-modal-title" class="text-2xl font-bold mb-6 text-white">Add DNS Record</h3>
-            <form id="record-form" class="space-y-4">
-                <input type="hidden" name="record_id" id="record-id">
+    <div id="record-modal" class="hidden fixed inset-0 bg-black/30 z-50 fade-in">
+        <div class="absolute inset-0" onclick="hideRecordModal()"></div>
+        <div class="absolute right-0 h-full w-full max-w-xl bg-[rgb(var(--bg-primary))] shadow-xl slide-in flex flex-col">
+            <div class="flex items-center justify-between border-b border-[rgb(var(--border))] p-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Name</label>
-                    <input type="text" name="name" id="record-name" placeholder="www or @ for root" required
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <h3 id="record-modal-title" class="text-base font-semibold">Add DNS Record</h3>
+                    <p class="text-xs text-[rgb(var(--text-muted))]">Zone: <span id="record-modal-zone"></span></p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Type</label>
-                    <select name="type" id="record-type" required
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option value="A">A - IPv4 Address</option>
-                        <option value="AAAA">AAAA - IPv6 Address</option>
-                        <option value="CNAME">CNAME - Canonical Name</option>
-                        <option value="MX">MX - Mail Exchange</option>
-                        <option value="TXT">TXT - Text Record</option>
-                        <option value="NS">NS - Name Server</option>
-                        <option value="PTR">PTR - Pointer</option>
-                        <option value="SRV">SRV - Service</option>
-                    </select>
+                <button onclick="hideRecordModal()" class="inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">Close</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-4">
+                <form id="record-form" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <input type="hidden" name="record_id" id="record-id">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Name</label>
+                        <input type="text" name="name" id="record-name" placeholder="@ for root, or host (e.g., www)" required
+                            class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 placeholder-zinc-400">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Type</label>
+                        <select name="type" id="record-type" required
+                            class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500">
+                            <option value="A">A - IPv4 Address</option>
+                            <option value="AAAA">AAAA - IPv6 Address</option>
+                            <option value="CNAME">CNAME - Canonical Name</option>
+                            <option value="MX">MX - Mail Exchange</option>
+                            <option value="TXT">TXT - Text Record</option>
+                            <option value="NS">NS - Name Server</option>
+                            <option value="PTR">PTR - Pointer</option>
+                            <option value="SRV">SRV - Service</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">Content / Target</label>
+                        <input type="text" name="value" id="record-value" placeholder="IPv4, IPv6, FQDN, or text" required
+                            class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500 placeholder-zinc-400">
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-[rgb(var(--text-muted))]">TTL (seconds)</label>
+                        <input type="number" name="ttl" id="record-ttl" value="3600" min="0"
+                            class="h-10 w-full rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-primary))] px-3 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </form>
+            </div>
+            <div class="border-t border-[rgb(var(--border))] p-4">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs text-[rgb(var(--text-muted))]">Changes apply to <strong id="record-footer-zone"></strong></div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="hideRecordModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-secondary))]">
+                            Cancel
+                        </button>
+                        <button type="submit" form="record-form" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">
+                            Save changes
+                        </button>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Value</label>
-                    <input type="text" name="value" id="record-value" placeholder="192.168.1.1 or target.example.com" required
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">TTL (seconds)</label>
-                    <input type="number" name="ttl" id="record-ttl" value="3600"
-                        class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                </div>
-                <div class="flex space-x-3 mt-6">
-                    <button type="submit" class="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-medium transition duration-200">
-                        Save Record
-                    </button>
-                    <button type="button" onclick="hideRecordModal()" class="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-medium transition duration-200">
-                        Cancel
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Toast Notification -->
-    <div id="toast" class="hidden fixed bottom-6 right-6 px-6 py-4 rounded-lg shadow-2xl z-50 max-w-md">
-        <div class="flex items-center space-x-3">
-            <svg id="toast-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"></svg>
-            <span id="toast-message" class="font-medium"></span>
+            </div>
         </div>
     </div>
 
