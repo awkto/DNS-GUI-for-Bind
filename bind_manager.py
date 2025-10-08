@@ -166,7 +166,7 @@ ns1     IN      A       127.0.0.1
         logger.info(f"Created zone file: {zone_file}")
         
         # Add zone to BIND configuration
-        self._add_zone_to_config(zone_name, f"db.{zone_name}")
+        self._add_zone_to_config(zone_name, zone_file)
         
         # Reload BIND
         self._reload_bind()
