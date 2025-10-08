@@ -1,22 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DNS Manager - BIND GUI</title>
+    <script>
+        // Use class-based dark mode so we can toggle it regardless of OS setting
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: {} }
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style type="text/tailwindcss">
         @layer base {
+            /* Light theme variables (kept for optional toggle) */
             :root {
-                --bg-primary: 255 255 255;
-                --bg-secondary: 247 248 250;
-                --bg-accent: 233 237 243;
-                --text-primary: 28 30 33;
-                --text-secondary: 85 85 85;
-                --text-muted: 119 119 119;
-                --border: 221 221 221;
-                --brand: 0 120 255;
+                --bg-primary: 255 255 255;      /* white */
+                --bg-secondary: 247 248 250;    /* zinc-50 */
+                --bg-accent: 233 237 243;       /* slate-100 */
+                --text-primary: 28 30 33;       /* zinc-900 */
+                --text-secondary: 63 63 70;     /* zinc-700 */
+                --text-muted: 113 113 122;      /* zinc-500 */
+                --border: 221 221 221;          /* zinc-200 */
+                --brand: 59 130 246;            /* blue-500 */
+            }
+            /* Dark theme overrides (default) */
+            .dark {
+                --bg-primary: 17 18 20;         /* zinc-900 */
+                --bg-secondary: 24 25 28;       /* zinc-800 */
+                --bg-accent: 38 42 48;          /* slate-700 */
+                --text-primary: 244 244 245;    /* zinc-100 */
+                --text-secondary: 212 212 216;  /* zinc-300 */
+                --text-muted: 161 161 170;      /* zinc-400 */
+                --border: 63 63 70;             /* zinc-700 */
+                --brand: 56 189 248;            /* sky-400 */
             }
         }
         
@@ -62,6 +81,12 @@
                         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
                     </svg>
                 </button>
+                <!-- Theme toggle -->
+                <button id="theme-toggle" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] hover:bg-[rgb(var(--bg-accent))] text-[rgb(var(--text-primary))] px-3 py-2 text-sm transition-colors" title="Toggle theme">
+                    <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </button>
             </div>
         </div>
     </header>
@@ -81,7 +106,7 @@
                         <span id="zones-count" class="ml-2 inline-flex items-center rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] px-2.5 py-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">0</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="showCreateZoneModal(); event.stopPropagation();" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">
+                        <button onclick="showCreateZoneModal(); event.stopPropagation();" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--brand))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--brand))]/90">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
                             </svg>
@@ -179,7 +204,7 @@
                     <h2 class="text-sm font-semibold">DNS Records</h2>
                     <span id="records-count" class="ml-2 inline-flex items-center rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--bg-secondary))] px-2.5 py-0.5 text-xs font-medium text-[rgb(var(--text-secondary))]">0 shown</span>
                 </div>
-                <button id="add-record-btn" onclick="showCreateRecordModal()" disabled class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))] disabled:opacity-50 disabled:cursor-not-allowed">
+                <button id="add-record-btn" onclick="showCreateRecordModal()" disabled class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--brand))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--brand))]/90 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>
                     </svg>
@@ -318,7 +343,7 @@
                         <button onclick="hideConfigModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-secondary))]">
                             Cancel
                         </button>
-                        <button id="save-config-btn" onclick="saveConfiguration()" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))] disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button id="save-config-btn" onclick="saveConfiguration()" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-[rgb(var(--brand))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--brand))]/90 disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg id="save-config-spinner" class="hidden animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -368,7 +393,7 @@
                         <button type="button" onclick="hideCreateZoneModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-secondary))]">
                             Cancel
                         </button>
-                        <button type="submit" form="create-zone-form" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">
+                        <button type="submit" form="create-zone-form" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--brand))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--brand))]/90">
                             Create Zone
                         </button>
                     </div>
@@ -429,7 +454,7 @@
                         <button type="button" onclick="hideRecordModal()" class="inline-flex items-center gap-2 rounded-2xl border border-[rgb(var(--border))] px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-secondary))]">
                             Cancel
                         </button>
-                        <button type="submit" form="record-form" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--text-primary))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--bg-accent))]">
+                        <button type="submit" form="record-form" class="inline-flex items-center gap-2 rounded-2xl bg-[rgb(var(--brand))] text-white px-4 py-2 text-sm transition-colors hover:bg-[rgb(var(--brand))]/90">
                             Save changes
                         </button>
                     </div>
@@ -439,5 +464,26 @@
     </div>
 
     <script src="app.js"></script>
+    <script>
+        // Simple theme toggle: persists preference and swaps icon
+        const root = document.documentElement;
+        const toggle = document.getElementById('theme-toggle');
+        const icon = document.getElementById('theme-icon');
+        const stored = localStorage.getItem('theme');
+        if (stored) {
+            root.classList.toggle('dark', stored === 'dark');
+        }
+        function setIcon() {
+            icon.innerHTML = root.classList.contains('dark')
+                ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+                : '<circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78 5.64 18.36m12.72-12.72 1.42-1.42"/>';
+        }
+        setIcon();
+        toggle.addEventListener('click', () => {
+            root.classList.toggle('dark');
+            localStorage.setItem('theme', root.classList.contains('dark') ? 'dark' : 'light');
+            setIcon();
+        });
+    </script>
 </body>
 </html>
