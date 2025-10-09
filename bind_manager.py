@@ -403,3 +403,325 @@ zone "{zone_name}" {{
                 f.write(content)
             
             logger.info(f"Incremented serial: {old_serial} -> {new_serial}")
+    
+    # ========== Settings Management Methods ==========
+    
+    def list_blocked_zones(self) -> List[str]:
+        """List all blocked zones (null routing)"""
+        blocked = []
+        
+        if not os.path.exists(self.config_file):
+            return blocked
+        
+        try:
+            with open(self.config_file, 'r') as f:
+                content = f.read()
+            
+            # Find blocked zones - zones that route to 0.0.0.0 or null
+            # Format: zone "ads.example.com" { type master; file "/etc/bind/zones/db.null"; };
+            pattern = r'zone\s+"([^"]+)"\s+\{[^}]*file\s+"[^"]*null[^"]*"'
+            matches = re.finditer(pattern, content, re.MULTILINE)
+            
+            for match in matches:
+                blocked.append(match.group(1))
+            
+            return blocked
+        except Exception as e:
+            logger.error(f"Error listing blocked zones: {e}")
+            return []
+    
+    def add_blocked_zone(self, domain: str):
+        """Add a blocked zone (null routing)"""
+        # Create null zone file if it doesn't exist
+        null_zone_path = os.path.join(self.zones_dir, 'db.null')
+        if not os.path.exists(null_zone_path):
+            null_zone_content = """$TTL 86400
+@   IN  SOA localhost. root.localhost. (
+            1       ; Serial
+            3600    ; Refresh
+            1800    ; Retry
+            604800  ; Expire
+            86400 ) ; Minimum TTL
+@   IN  NS  localhost.
+@   IN  A   0.0.0.0
+*   IN  A   0.0.0.0
+"""
+            with open(null_zone_path, 'w') as f:
+                f.write(null_zone_content)
+            logger.info(f"Created null zone file: {null_zone_path}")
+        
+        # Add zone to config
+        zone_def = f'\nzone "{domain}" {{\n    type master;\n    file "{null_zone_path}";\n}};\n'
+        
+        with open(self.config_file, 'a') as f:
+            f.write(zone_def)
+        
+        logger.info(f"Added blocked zone: {domain}")
+        self._reload_bind()
+    
+    def remove_blocked_zone(self, domain: str):
+        """Remove a blocked zone"""
+        if not os.path.exists(self.config_file):
+            raise Exception("Config file not found")
+        
+        with open(self.config_file, 'r') as f:
+            lines = f.readlines()
+        
+        # Remove zone definition
+        new_lines = []
+        skip_until_brace = False
+        
+        for line in lines:
+            if f'zone "{domain}"' in line:
+                skip_until_brace = True
+                continue
+            
+            if skip_until_brace:
+                if '};' in line:
+                    skip_until_brace = False
+                continue
+            
+            new_lines.append(line)
+        
+        with open(self.config_file, 'w') as f:
+            f.writelines(new_lines)
+        
+        logger.info(f"Removed blocked zone: {domain}")
+        self._reload_bind()
+    
+    def list_forwarders(self) -> List[str]:
+        """List configured forwarders"""
+        forwarders = []
+        
+        # Look in main config file for forwarders
+        config_paths = [self.config_file, '/etc/bind/named.conf.options', '/etc/bind/named.conf']
+        
+        for config_path in config_paths:
+            if not os.path.exists(config_path):
+                continue
+            
+            try:
+                with open(config_path, 'r') as f:
+                    content = f.read()
+                
+                # Find forwarders block
+                # Format: forwarders { 8.8.8.8; 8.8.4.4; };
+                pattern = r'forwarders\s*\{([^}]+)\}'
+                match = re.search(pattern, content)
+                
+                if match:
+                    forwarders_block = match.group(1)
+                    # Extract IPs
+                    ip_pattern = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+                    ips = re.findall(ip_pattern, forwarders_block)
+                    forwarders.extend(ips)
+                    break
+            except Exception as e:
+                logger.warning(f"Error reading {config_path}: {e}")
+        
+        return list(set(forwarders))  # Remove duplicates
+    
+    def add_forwarder(self, ip: str):
+        """Add a DNS forwarder"""
+        # Use named.conf.options for forwarders
+        options_file = '/etc/bind/named.conf.options'
+        
+        if not os.path.exists(options_file):
+            # Create basic options file
+            options_content = """options {
+    directory "/var/cache/bind";
+    forwarders {
+        """ + ip + """;
+    };
+    dnssec-validation auto;
+    listen-on-v6 { any; };
+};
+"""
+            with open(options_file, 'w') as f:
+                f.write(options_content)
+        else:
+            with open(options_file, 'r') as f:
+                content = f.read()
+            
+            # Check if forwarders block exists
+            if 'forwarders' in content:
+                # Add to existing forwarders block
+                content = re.sub(
+                    r'(forwarders\s*\{[^}]*)',
+                    r'\1\n        ' + ip + ';',
+                    content
+                )
+            else:
+                # Add forwarders block to options
+                content = re.sub(
+                    r'(options\s*\{)',
+                    r'\1\n    forwarders {\n        ' + ip + ';\n    };',
+                    content
+                )
+            
+            with open(options_file, 'w') as f:
+                f.write(content)
+        
+        logger.info(f"Added forwarder: {ip}")
+        self._reload_bind()
+    
+    def remove_forwarder(self, ip: str):
+        """Remove a DNS forwarder"""
+        options_file = '/etc/bind/named.conf.options'
+        
+        if not os.path.exists(options_file):
+            raise Exception("Options file not found")
+        
+        with open(options_file, 'r') as f:
+            content = f.read()
+        
+        # Remove the IP from forwarders
+        content = re.sub(r'\s*' + re.escape(ip) + r'\s*;', '', content)
+        
+        with open(options_file, 'w') as f:
+            f.write(content)
+        
+        logger.info(f"Removed forwarder: {ip}")
+        self._reload_bind()
+    
+    def get_recursion_settings(self) -> Dict:
+        """Get recursion configuration"""
+        settings = {
+            'enabled': False,
+            'allowed_networks': []
+        }
+        
+        options_file = '/etc/bind/named.conf.options'
+        
+        if not os.path.exists(options_file):
+            return settings
+        
+        try:
+            with open(options_file, 'r') as f:
+                content = f.read()
+            
+            # Check recursion setting
+            if re.search(r'recursion\s+yes', content):
+                settings['enabled'] = True
+            elif re.search(r'recursion\s+no', content):
+                settings['enabled'] = False
+            else:
+                settings['enabled'] = True  # Default is yes
+            
+            # Get allow-recursion networks
+            pattern = r'allow-recursion\s*\{([^}]+)\}'
+            match = re.search(pattern, content)
+            
+            if match:
+                networks_block = match.group(1)
+                # Extract networks/IPs
+                network_pattern = r'(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(?:/\d{1,2})?|localhost|localnets)'
+                networks = re.findall(network_pattern, networks_block)
+                settings['allowed_networks'] = networks
+            
+            return settings
+        except Exception as e:
+            logger.error(f"Error getting recursion settings: {e}")
+            return settings
+    
+    def set_recursion(self, enabled: bool):
+        """Enable or disable recursion"""
+        options_file = '/etc/bind/named.conf.options'
+        
+        if not os.path.exists(options_file):
+            # Create basic options file
+            options_content = f"""options {{
+    directory "/var/cache/bind";
+    recursion {"yes" if enabled else "no"};
+    dnssec-validation auto;
+    listen-on-v6 {{ any; }};
+}};
+"""
+            with open(options_file, 'w') as f:
+                f.write(options_content)
+        else:
+            with open(options_file, 'r') as f:
+                content = f.read()
+            
+            # Update or add recursion setting
+            if 'recursion' in content:
+                content = re.sub(
+                    r'recursion\s+(yes|no)\s*;',
+                    f'recursion {"yes" if enabled else "no"};',
+                    content
+                )
+            else:
+                # Add to options block
+                content = re.sub(
+                    r'(options\s*\{)',
+                    r'\1\n    recursion ' + ('yes' if enabled else 'no') + ';',
+                    content
+                )
+            
+            with open(options_file, 'w') as f:
+                f.write(content)
+        
+        logger.info(f"Set recursion: {enabled}")
+        self._reload_bind()
+    
+    def add_recursion_network(self, network: str):
+        """Add network to allow-recursion"""
+        options_file = '/etc/bind/named.conf.options'
+        
+        if not os.path.exists(options_file):
+            options_content = f"""options {{
+    directory "/var/cache/bind";
+    allow-recursion {{
+        {network};
+    }};
+    dnssec-validation auto;
+    listen-on-v6 {{ any; }};
+}};
+"""
+            with open(options_file, 'w') as f:
+                f.write(options_content)
+        else:
+            with open(options_file, 'r') as f:
+                content = f.read()
+            
+            # Check if allow-recursion exists
+            if 'allow-recursion' in content:
+                # Add to existing block
+                content = re.sub(
+                    r'(allow-recursion\s*\{[^}]*)',
+                    r'\1\n        ' + network + ';',
+                    content
+                )
+            else:
+                # Add allow-recursion block
+                content = re.sub(
+                    r'(options\s*\{)',
+                    r'\1\n    allow-recursion {\n        ' + network + ';\n    };',
+                    content
+                )
+            
+            with open(options_file, 'w') as f:
+                f.write(content)
+        
+        logger.info(f"Added recursion network: {network}")
+        self._reload_bind()
+    
+    def remove_recursion_network(self, network: str):
+        """Remove network from allow-recursion"""
+        options_file = '/etc/bind/named.conf.options'
+        
+        if not os.path.exists(options_file):
+            raise Exception("Options file not found")
+        
+        with open(options_file, 'r') as f:
+            content = f.read()
+        
+        # Remove the network
+        content = re.sub(r'\s*' + re.escape(network) + r'\s*;', '', content)
+        
+        with open(options_file, 'w') as f:
+            f.write(content)
+        
+        logger.info(f"Removed recursion network: {network}")
+        self._reload_bind()
+
