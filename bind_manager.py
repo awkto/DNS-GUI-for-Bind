@@ -255,11 +255,42 @@ zone "{zone_name}" {{
             lines = f.readlines()
         
         record_id = 0
+        in_soa_block = False
+        
         for line in lines:
             line = line.strip()
             
-            # Skip comments, empty lines, and SOA records
-            if not line or line.startswith(';') or 'SOA' in line:
+            # Skip comments and empty lines
+            if not line or line.startswith(';'):
+                continue
+            
+            # Track SOA block (multi-line)
+            if 'SOA' in line and '(' in line:
+                in_soa_block = True
+                # Parse SOA record
+                parts = line.split()
+                in_idx = parts.index('IN') if 'IN' in parts else -1
+                if in_idx >= 0 and in_idx + 1 < len(parts):
+                    name = parts[0] if in_idx > 0 else '@'
+                    record_type = 'SOA'
+                    # Get nameserver and email
+                    ns = parts[in_idx + 2] if in_idx + 2 < len(parts) else ''
+                    email = parts[in_idx + 3] if in_idx + 3 < len(parts) else ''
+                    value = f"{ns} {email}"
+                    
+                    records.append({
+                        'id': str(record_id),
+                        'name': name,
+                        'type': record_type,
+                        'value': value,
+                        'ttl': 86400
+                    })
+                    record_id += 1
+                continue
+            
+            if in_soa_block:
+                if ')' in line:
+                    in_soa_block = False
                 continue
             
             # Parse record lines (simplified)

@@ -35,9 +35,9 @@ RUN mkdir -p /etc/bind/zones && \
     chown -R bind:bind /etc/bind/zones && \
     chown -R bind:bind /var/cache/bind
 
-# Copy startup script
+# Copy startup script and fix line endings
 COPY start.sh /start.sh
-RUN chmod +x /start.sh
+RUN sed -i 's/\r$//' /start.sh && chmod +x /start.sh
 
 # Environment variables
 ENV BIND_ZONES_DIR=/etc/bind/zones

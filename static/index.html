@@ -45,6 +45,16 @@
             border-color: #3B82F6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+        
+        /* Ensure action buttons are visible */
+        table {
+            table-layout: auto;
+        }
+        
+        table td:last-child {
+            white-space: nowrap;
+            min-width: 100px;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 min-h-screen text-gray-100">
@@ -135,19 +145,54 @@
                                     class="w-full px-4 py-2 filter-input rounded-lg text-white placeholder-gray-500">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Filter by Type</label>
-                                <select id="record-type-filter" class="w-full px-4 py-2 filter-input rounded-lg text-white">
-                                    <option value="">All Types</option>
-                                    <option value="A">A - IPv4 Address</option>
-                                    <option value="AAAA">AAAA - IPv6 Address</option>
-                                    <option value="CNAME">CNAME - Canonical Name</option>
-                                    <option value="MX">MX - Mail Exchange</option>
-                                    <option value="TXT">TXT - Text Record</option>
-                                    <option value="NS">NS - Name Server</option>
-                                    <option value="PTR">PTR - Pointer</option>
-                                    <option value="SRV">SRV - Service</option>
-                                    <option value="SOA">SOA - Start of Authority</option>
-                                </select>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Filter by Type (select multiple)</label>
+                                <div class="relative">
+                                    <button type="button" id="type-filter-toggle" onclick="toggleTypeFilter()" 
+                                        class="w-full px-4 py-2 filter-input rounded-lg text-white text-left flex items-center justify-between">
+                                        <span id="type-filter-label">All Types</span>
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div id="type-filter-dropdown" class="hidden absolute z-10 mt-1 w-full bg-gray-800 border border-gray-600 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="A" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">A - IPv4 Address</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="AAAA" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">AAAA - IPv6 Address</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="CNAME" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">CNAME - Canonical Name</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="MX" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">MX - Mail Exchange</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="TXT" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">TXT - Text Record</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="NS" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">NS - Name Server</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="PTR" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">PTR - Pointer</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="SRV" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">SRV - Service</span>
+                                        </label>
+                                        <label class="flex items-center px-4 py-2 hover:bg-gray-700 cursor-pointer">
+                                            <input type="checkbox" value="SOA" class="record-type-checkbox mr-3" onchange="updateTypeFilter()">
+                                            <span class="text-white">SOA - Start of Authority</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -198,8 +243,8 @@
     </div>
 
     <!-- Create/Edit Record Modal -->
-    <div id="record-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4 border border-gray-700 shadow-2xl">
+    <div id="record-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 overflow-y-auto">
+        <div class="bg-gray-800 rounded-xl p-8 max-w-2xl w-full mx-4 my-8 border border-gray-700 shadow-2xl">
             <h3 id="record-modal-title" class="text-2xl font-bold mb-6 text-white">Add DNS Record</h3>
             <form id="record-form" class="space-y-4">
                 <input type="hidden" name="record_id" id="record-id">
@@ -210,7 +255,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Type</label>
-                    <select name="type" id="record-type" required
+                    <select name="type" id="record-type" onchange="toggleSOAFields()" required
                         class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-green-500">
                         <option value="A">A - IPv4 Address</option>
                         <option value="AAAA">AAAA - IPv6 Address</option>
@@ -220,13 +265,63 @@
                         <option value="NS">NS - Name Server</option>
                         <option value="PTR">PTR - Pointer</option>
                         <option value="SRV">SRV - Service</option>
+                        <option value="SOA">SOA - Start of Authority</option>
                     </select>
                 </div>
-                <div>
+                
+                <!-- Standard Value Field (for non-SOA records) -->
+                <div id="standard-value-field">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Value</label>
-                    <input type="text" name="value" id="record-value" placeholder="192.168.1.1 or target.example.com" required
+                    <input type="text" name="value" id="record-value" placeholder="192.168.1.1 or target.example.com"
                         class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
+                
+                <!-- SOA-Specific Fields (hidden by default) -->
+                <div id="soa-fields" class="hidden space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Primary Nameserver</label>
+                            <input type="text" id="soa-mname" placeholder="ns1.example.com."
+                                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Admin Email</label>
+                            <input type="text" id="soa-rname" placeholder="admin.example.com."
+                                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Refresh (e.g., 1h, 3600)</label>
+                            <input type="text" id="soa-refresh" placeholder="1h" value="1h"
+                                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Retry (e.g., 30m, 1800)</label>
+                            <input type="text" id="soa-retry" placeholder="30m" value="30m"
+                                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Expire (e.g., 7d, 604800)</label>
+                            <input type="text" id="soa-expire" placeholder="7d" value="7d"
+                                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Minimum TTL (e.g., 1d, 86400)</label>
+                            <input type="text" id="soa-minimum" placeholder="1d" value="1d"
+                                class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400">
+                        💡 Time values: Use <code class="bg-gray-900 px-1 rounded">s</code> (seconds), 
+                        <code class="bg-gray-900 px-1 rounded">m</code> (minutes), 
+                        <code class="bg-gray-900 px-1 rounded">h</code> (hours), or 
+                        <code class="bg-gray-900 px-1 rounded">d</code> (days)
+                    </p>
+                </div>
+                
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">TTL (seconds)</label>
                     <input type="number" name="ttl" id="record-ttl" value="3600"

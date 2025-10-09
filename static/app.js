@@ -20,15 +20,19 @@ function setupEventListeners() {
     
     // Filter event listeners
     const searchInput = document.getElementById('record-search');
-    const typeFilter = document.getElementById('record-type-filter');
     
     if (searchInput) {
         searchInput.addEventListener('input', filterRecords);
     }
     
-    if (typeFilter) {
-        typeFilter.addEventListener('change', filterRecords);
-    }
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('type-filter-dropdown');
+        const toggle = document.getElementById('type-filter-toggle');
+        if (dropdown && toggle && !dropdown.contains(e.target) && !toggle.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
 }
 
 // Check server health
@@ -201,6 +205,56 @@ function showCreateRecordModal() {
 function hideRecordModal() {
     document.getElementById('record-modal').classList.add('hidden');
     document.getElementById('record-form').reset();
+    toggleSOAFields(); // Reset field visibility
+}
+
+// Toggle SOA-specific fields based on record type
+function toggleSOAFields() {
+    const recordType = document.getElementById('record-type').value;
+    const soaFields = document.getElementById('soa-fields');
+    const standardValue = document.getElementById('standard-value-field');
+    const valueInput = document.getElementById('record-value');
+    
+    if (recordType === 'SOA') {
+        soaFields.classList.remove('hidden');
+        standardValue.classList.add('hidden');
+        valueInput.removeAttribute('required');
+    } else {
+        soaFields.classList.add('hidden');
+        standardValue.classList.remove('hidden');
+        valueInput.setAttribute('required', 'required');
+    }
+}
+
+// Convert time string to seconds (e.g., "1h" -> 3600, "1d" -> 86400)
+function timeToSeconds(timeStr) {
+    if (!timeStr) return 0;
+    
+    // If already a number, return it
+    if (!isNaN(timeStr)) return parseInt(timeStr);
+    
+    const match = timeStr.match(/^(\d+)([smhd])$/i);
+    if (!match) return parseInt(timeStr) || 0;
+    
+    const value = parseInt(match[1]);
+    const unit = match[2].toLowerCase();
+    
+    const multipliers = {
+        's': 1,
+        'm': 60,
+        'h': 3600,
+        'd': 86400
+    };
+    
+    return value * (multipliers[unit] || 1);
+}
+
+// Convert seconds to human-readable time (e.g., 3600 -> "1h")
+function secondsToTime(seconds) {
+    if (seconds % 86400 === 0) return (seconds / 86400) + 'd';
+    if (seconds % 3600 === 0) return (seconds / 3600) + 'h';
+    if (seconds % 60 === 0) return (seconds / 60) + 'm';
+    return seconds + 's';
 }
 
 // Handle create zone
@@ -282,10 +336,35 @@ async function handleSaveRecord(e) {
     
     const formData = new FormData(e.target);
     const recordId = formData.get('record_id');
+    const recordType = formData.get('type');
+    
+    let value;
+    
+    // Handle SOA records differently
+    if (recordType === 'SOA') {
+        const mname = document.getElementById('soa-mname').value.trim();
+        const rname = document.getElementById('soa-rname').value.trim();
+        const refresh = timeToSeconds(document.getElementById('soa-refresh').value);
+        const retry = timeToSeconds(document.getElementById('soa-retry').value);
+        const expire = timeToSeconds(document.getElementById('soa-expire').value);
+        const minimum = timeToSeconds(document.getElementById('soa-minimum').value);
+        
+        if (!mname || !rname) {
+            showToast('Primary nameserver and admin email are required for SOA records', 'error');
+            return;
+        }
+        
+        // Format: "mname rname serial refresh retry expire minimum"
+        // Serial will be handled by the backend
+        value = `${mname} ${rname} ${refresh} ${retry} ${expire} ${minimum}`;
+    } else {
+        value = formData.get('value');
+    }
+    
     const data = {
         name: formData.get('name'),
-        type: formData.get('type'),
-        value: formData.get('value'),
+        type: recordType,
+        value: value,
         ttl: parseInt(formData.get('ttl'))
     };
     
@@ -329,8 +408,30 @@ function editRecord(id, name, type, value, ttl) {
     document.getElementById('record-id').value = id;
     document.getElementById('record-name').value = name;
     document.getElementById('record-type').value = type;
-    document.getElementById('record-value').value = value;
     document.getElementById('record-ttl').value = ttl;
+    
+    // Handle SOA records
+    if (type === 'SOA') {
+        // Parse SOA value: "mname rname serial refresh retry expire minimum"
+        // Or: "mname rname" (simplified format)
+        const parts = value.split(/\s+/);
+        if (parts.length >= 2) {
+            document.getElementById('soa-mname').value = parts[0];
+            document.getElementById('soa-rname').value = parts[1];
+            
+            // If we have the numeric values, convert them
+            if (parts.length >= 6) {
+                document.getElementById('soa-refresh').value = secondsToTime(parseInt(parts[3]) || 3600);
+                document.getElementById('soa-retry').value = secondsToTime(parseInt(parts[4]) || 1800);
+                document.getElementById('soa-expire').value = secondsToTime(parseInt(parts[5]) || 604800);
+                document.getElementById('soa-minimum').value = secondsToTime(parseInt(parts[6]) || 86400);
+            }
+        }
+    } else {
+        document.getElementById('record-value').value = value;
+    }
+    
+    toggleSOAFields();
     document.getElementById('record-modal').classList.remove('hidden');
 }
 
@@ -439,13 +540,16 @@ function filterRecords() {
     if (!currentZone || !allRecords) return;
     
     const searchTerm = document.getElementById('record-search').value.toLowerCase();
-    const typeFilter = document.getElementById('record-type-filter').value;
+    
+    // Get selected type filters
+    const selectedTypes = Array.from(document.querySelectorAll('.record-type-checkbox:checked'))
+        .map(cb => cb.value);
     
     let filtered = allRecords;
     
-    // Filter by type
-    if (typeFilter) {
-        filtered = filtered.filter(record => record.type === typeFilter);
+    // Filter by type (if any selected)
+    if (selectedTypes.length > 0) {
+        filtered = filtered.filter(record => selectedTypes.includes(record.type));
     }
     
     // Filter by search term
@@ -459,6 +563,30 @@ function filterRecords() {
     }
     
     displayRecords(filtered);
+}
+
+// Toggle type filter dropdown
+function toggleTypeFilter() {
+    const dropdown = document.getElementById('type-filter-dropdown');
+    dropdown.classList.toggle('hidden');
+}
+
+// Update type filter label
+function updateTypeFilter() {
+    const selectedTypes = Array.from(document.querySelectorAll('.record-type-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    const label = document.getElementById('type-filter-label');
+    if (selectedTypes.length === 0) {
+        label.textContent = 'All Types';
+    } else if (selectedTypes.length === 1) {
+        label.textContent = selectedTypes[0];
+    } else {
+        label.textContent = `${selectedTypes.length} types selected`;
+    }
+    
+    // Apply filter
+    filterRecords();
 }
 
 function displayRecords(records) {
@@ -542,7 +670,8 @@ selectZone = async function(zoneName) {
             allRecords = data.records || [];
             // Reset filters
             document.getElementById('record-search').value = '';
-            document.getElementById('record-type-filter').value = '';
+            document.querySelectorAll('.record-type-checkbox').forEach(cb => cb.checked = false);
+            document.getElementById('type-filter-label').textContent = 'All Types';
             displayRecords(allRecords);
         } else {
             showToast('Failed to load records', 'error');
